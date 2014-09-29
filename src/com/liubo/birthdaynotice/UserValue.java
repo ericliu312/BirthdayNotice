@@ -12,10 +12,14 @@ package com.liubo.birthdaynotice;
 public class UserValue
 {
 
-    public static int dayTimeToMillis = 86400*1000;
-//    public static int dayTimeToMillis = 3000*1000;
+    public static int dayTimeToMillis = 24*60*60*1000;
+//    public static int dayTimeToMillis = 60*1000;
     public static String infoKey = "infokey";
+    public static String registeroKey = "registeroKey";
     public static String broadcastTag = "android.intent.action.MyBroadcastReceiver";
     public static String serviceMsgTag = "servicemsgtag";
+    public static String alarm_alert = "com.liubo.birthdaynotice.ALARM_ALERT";
+    public static String alarmTime = "alarmTime";
+    
     
 }

@@ -2,19 +2,18 @@ package com.liubo.birthdaynotice;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.List;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.AlarmManager;
 import android.app.AlertDialog;
-import android.content.BroadcastReceiver;
-import android.content.Context;
+import android.app.PendingIntent;
+import android.app.TimePickerDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.View;
@@ -22,6 +21,7 @@ import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.Button;
 import android.widget.ListView;
+import android.widget.TimePicker;
 
 import com.liubo.birthdaynotice.Dialog1.DialogPassinterface;
 
@@ -29,27 +29,26 @@ import com.liubo.birthdaynotice.Dialog1.DialogPassinterface;
 public class MainActivity extends Activity
 {
     
-    private int changeView = 999;
     private ListView listView;
-    private MyBroadcastReceiver receiver;
     private Button addBtn;
+    private Button registerBtn;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
         
-        if(!Tool.isServiceRunning(this))
-        {
-            Intent intent = new Intent(this, MyService.class);  
-            startService(intent);
-        }
+//        if(!Tool.isServiceRunning(this))
+//        {
+//            Intent intent = new Intent(this, MyService.class);  
+//            startService(intent);
+//        }
         
-        receiver = new MyBroadcastReceiver();
-        
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(UserValue.broadcastTag);
-        registerReceiver(receiver, filter);
+//        receiver = new MyBroadcastReceiver();
+//        
+//        IntentFilter filter = new IntentFilter();
+//        filter.addAction(UserValue.broadcastTag);
+//        registerReceiver(receiver, filter);
         
         setContentView(R.layout.activity_main);
         listView = (ListView)findViewById(R.id.my_list);
@@ -63,6 +62,20 @@ public class MainActivity extends Activity
                 openDialog();
             }
         });
+        
+        registerBtn = (Button)findViewById(R.id.register_btn);
+        registerBtn.setOnClickListener(new android.view.View.OnClickListener()
+        {
+            
+            @Override
+            public void onClick(View v)
+            {
+                showChangeDialog();
+            }
+        });
+        
+        registerAlarm();
+        
         String info = ShPrefUtils.getInstance(this).get(UserValue.infoKey, "");
         List<String> data = new ArrayList<String>();
         if(!Tool.isTrimEmpty(info))
@@ -82,6 +95,84 @@ public class MainActivity extends Activity
                 
             }
         });
+
+    }
+    
+    private void registerAlarm()
+    {
+        String reg = ShPrefUtils.getInstance(this).get(UserValue.registeroKey, null);
+        if(!Tool.isTrimEmpty(reg) && reg.equals("t") && Tool.isServiceRunning(this))
+        {
+            return;
+        }
+        
+        AlarmManager am = (AlarmManager)getSystemService(ALARM_SERVICE);  
+        PendingIntent pi = PendingIntent.getBroadcast(this, 0, new Intent(this, AlarmReceiver.class), Intent.FLAG_ACTIVITY_NEW_TASK);  
+        Calendar c = Calendar.getInstance();
+        c.setTimeInMillis(System.currentTimeMillis());
+        int nowHour = c.get(Calendar.HOUR_OF_DAY);
+        int nowMinute = c.get(Calendar.MINUTE);
+        int hourOfDay = 7;
+        int minute = 0;
+
+        if (hourOfDay < nowHour  ||
+                hourOfDay == nowHour && minute <= nowMinute) {
+            c.add(Calendar.DAY_OF_YEAR, 1);
+        }
+        long time = c.getTimeInMillis(); 
+        am.setInexactRepeating(AlarmManager.RTC_WAKEUP, time, UserValue.dayTimeToMillis, pi); 
+        ShPrefUtils.getInstance(this).put(UserValue.alarmTime, time+"");
+        ShPrefUtils.getInstance(this).put(UserValue.registeroKey, "t");
+    }
+    
+    private void cancelAlarm()
+    {
+        ShPrefUtils.getInstance(MainActivity.this).put(UserValue.registeroKey, "");
+        AlarmManager am = (AlarmManager)getSystemService(ALARM_SERVICE);  
+        PendingIntent pi = PendingIntent.getBroadcast(this, 0, new Intent(this, AlarmReceiver.class), Intent.FLAG_ACTIVITY_NEW_TASK);  
+        am.cancel(pi);
+    }
+    
+    
+    private void showChangeDialog()
+    {
+        Calendar c= Calendar.getInstance();
+        TimePickerDialog dialog=new TimePickerDialog(
+                this, 
+                new TimePickerDialog.OnTimeSetListener(){
+                    public void onTimeSet(TimePicker timePicker, int hourOfDay,int minute) {
+                      cancelAlarm();
+                      Calendar c = Calendar.getInstance();
+                      c.setTimeInMillis(System.currentTimeMillis());
+
+                      int nowHour = c.get(Calendar.HOUR_OF_DAY);
+                      int nowMinute = c.get(Calendar.MINUTE);
+
+                      if (hourOfDay < nowHour  ||
+                              hourOfDay == nowHour && minute <= nowMinute) {
+                          c.add(Calendar.DAY_OF_YEAR, 1);
+                      }
+                      c.set(Calendar.HOUR_OF_DAY, hourOfDay);
+                      c.set(Calendar.MINUTE, minute);
+                      c.set(Calendar.SECOND, 0);
+                      c.set(Calendar.MILLISECOND, 0);
+                      
+                      AlarmManager am = (AlarmManager)getSystemService(ALARM_SERVICE);  
+                      PendingIntent pi = PendingIntent.getBroadcast(MainActivity.this, 0, new Intent(MainActivity.this, AlarmReceiver.class), Intent.FLAG_ACTIVITY_NEW_TASK);  
+                      long time = c.getTimeInMillis(); 
+                      am.setInexactRepeating(AlarmManager.RTC_WAKEUP, time, UserValue.dayTimeToMillis, pi); 
+                      
+//                      System.out.println("now0:"+Tool.getDateByCalendar(c)+"---"+Tool.getTimeByCalendar(c));
+//                      System.out.println("now1:"+now);
+//                      System.out.println("now2:"+System.currentTimeMillis());
+                      ShPrefUtils.getInstance(MainActivity.this).put(UserValue.alarmTime, time+"");
+                      ShPrefUtils.getInstance(MainActivity.this).put(UserValue.registeroKey, "t");
+                    }
+                }, 
+                c.get(Calendar.HOUR_OF_DAY), 
+                c.get(Calendar.MINUTE),
+                true);
+        dialog.show();
     }
     
     MyListAdapter adapter;
@@ -119,74 +210,13 @@ public class MainActivity extends Activity
     @Override
     public boolean onCreateOptionsMenu(Menu menu)
     {
-        // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.main, menu);
         return true;
-    }
-    
-    Handler handler = new Handler()
-    {
-
-        @Override
-        public void handleMessage(Message msg)
-        {
-            if(msg.what == changeView)
-            {
-                if(msg.obj!=null)
-                {
-                    String message = msg.obj.toString();
-                    showNotice(message);
-                }
-            }
-        }
-        
-    };
-    
-    private void showNotice(String msg)
-    {
-      AlertDialog.Builder dialog = new AlertDialog.Builder(this);
-      dialog.setTitle("生日提醒");
-      dialog.setMessage(msg);
-      dialog.setNegativeButton("确定", new DialogInterface.OnClickListener() {
-          @Override
-          public void onClick(DialogInterface dialog,int which) {
-              dialog.dismiss();
-          }
-      });
-      dialog.show();
-    }
-    
-    public class MyBroadcastReceiver extends BroadcastReceiver
-    {
-
-        /**
-         * 
-         */
-        public MyBroadcastReceiver()
-        {
-            // TODO Auto-generated constructor stub
-        }
-
-        /* (non-Javadoc)
-         * @see android.content.BroadcastReceiver#onReceive(android.content.Context, android.content.Intent)
-         */
-        @Override
-        public void onReceive(Context context, Intent intent)
-        {
-            if(intent.getAction().equals(UserValue.broadcastTag))
-            {
-                Message msg = Message.obtain();
-                msg.what = changeView;
-                msg.obj = intent.getStringExtra(UserValue.serviceMsgTag);
-                handler.sendMessage(msg);
-            }
-        }
     }
 
     @Override
     protected void onDestroy()
     {
-        unregisterReceiver(receiver);
         super.onDestroy();
     }
 
@@ -212,8 +242,5 @@ public class MainActivity extends Activity
         System.exit(0);  
         android.os.Process.killProcess(android.os.Process.myPid());
     }   
-    
-
-    
 
 }

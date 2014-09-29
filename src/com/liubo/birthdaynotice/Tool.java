@@ -127,6 +127,11 @@ public class Tool
         {
             for (int i = 0; i < serviceList.size(); i++)
             {
+                if(serviceList.get(i).service.getClassName().contains("alarm"))
+                {
+                    System.out.println(serviceList.get(i).service.getClassName());
+                }
+//                System.out.println(serviceList.get(i).service.getClassName());
                 if (MyService.class.getName().equals(serviceList.get(i).service.getClassName()) && context.getPackageName().equals(serviceList.get(i).service.getPackageName()))
                 {
                     return true;// 服务已经启动
@@ -162,6 +167,34 @@ public class Tool
             return true;
         }
         return false;
+    }
+    
+    /**
+     * 格式化时间点
+     * 
+     * @param cal
+     * @return
+     */
+    public static String getTimeByCalendar(Calendar cal)
+    {
+        int hour = cal.get(Calendar.HOUR_OF_DAY);
+        int minute = cal.get(Calendar.MINUTE);
+        int second = cal.get(Calendar.SECOND);
+        String ret = null;
+        if (hour < 10)
+            ret = "0" + hour;
+        else
+            ret = String.valueOf(hour);
+        if (minute < 10)
+            ret += "0" + minute;
+        else
+            ret += minute;
+
+        if (second < 10)
+            ret += "0" + second;
+        else
+            ret += second;
+        return ret;
     }
 
 }
